@@ -1,0 +1,176 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+local Screengui = Instance.new("ScreenGui")
+Screengui.Name = "AutoBuyGUI"
+Screengui.Parent = PlayerGui
+Screengui.ResetOnSpawn = false
+
+-- Interfaz ACUSADO HUB
+local BuyFrame = Instance.new("Frame")
+BuyFrame.Name = "BuyFrame"
+BuyFrame.Size = UDim2.new(0, 260, 0, 160)
+BuyFrame.Position = UDim2.new(0.5, -130, 0.5, -80)
+BuyFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
+BuyFrame.BorderSizePixel = 0
+BuyFrame.Active = true
+BuyFrame.Draggable = true
+BuyFrame.Parent = Screengui
+
+local BuyFrameCorner = Instance.new("UICorner")
+BuyFrameCorner.CornerRadius = UDim.new(0, 8)
+BuyFrameCorner.Parent = BuyFrame
+
+local BuyFrameStroke = Instance.new("UIStroke")
+BuyFrameStroke.Thickness = 1.5
+BuyFrameStroke.Color = Color3.fromRGB(130, 50, 255)
+BuyFrameStroke.Parent = BuyFrame
+
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Position = UDim2.new(0, 0, 0, 5)
+Title.BackgroundTransparency = 1
+Title.Text = "ACUSADO HUB"
+Title.TextColor3 = Color3.fromRGB(130, 50, 255)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 14
+Title.Parent = BuyFrame
+
+local QuantityBox = Instance.new("TextBox")
+QuantityBox.Name = "QuantityBox"
+QuantityBox.Size = UDim2.new(0, 220, 0, 35)
+QuantityBox.Position = UDim2.new(0.5, -110, 0, 45)
+QuantityBox.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+QuantityBox.Text = "1"
+QuantityBox.PlaceholderText = "Cantidad"
+QuantityBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+QuantityBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
+QuantityBox.Font = Enum.Font.GothamBold
+QuantityBox.TextSize = 13
+QuantityBox.Parent = BuyFrame
+
+local QuantityCorner = Instance.new("UICorner")
+QuantityCorner.CornerRadius = UDim.new(0, 6)
+QuantityCorner.Parent = QuantityBox
+
+local QuantityStroke = Instance.new("UIStroke")
+QuantityStroke.Thickness = 1
+QuantityStroke.Color = Color3.fromRGB(130, 50, 255)
+QuantityStroke.Parent = QuantityBox
+
+local BuyButton = Instance.new("TextButton")
+BuyButton.Size = UDim2.new(0, 220, 0, 35)
+BuyButton.Position = UDim2.new(0.5, -110, 0, 95)
+BuyButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+BuyButton.Text = "AUTO BUY: OFF"
+BuyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+BuyButton.Font = Enum.Font.GothamBold
+BuyButton.TextSize = 12
+BuyButton.Parent = BuyFrame
+
+local BuyBtnCorner = Instance.new("UICorner")
+BuyBtnCorner.CornerRadius = UDim.new(0, 6)
+BuyBtnCorner.Parent = BuyButton
+
+QuantityBox:GetPropertyChangedSignal("Text"):Connect(function()
+	local num = tonumber(QuantityBox.Text)
+	if num then
+		if num > 1000 then
+			QuantityBox.Text = "1000"
+		elseif num < 1 then
+			QuantityBox.Text = "1"
+		end
+	end
+end)
+
+local autoBuyActive = false
+
+-- Función de Clic Adaptada para PC y Móvil
+local function clickSingleTarget(targetBtn)
+	if firesignal and (targetBtn:IsA("TextButton") or targetBtn:IsA("ImageButton")) then
+		pcall(function() firesignal(targetBtn.MouseButton1Click) end)
+		pcall(function() firesignal(targetBtn.Activated) end)
+		pcall(function() firesignal(targetBtn.MouseButton1Down) end)
+		pcall(function() firesignal(targetBtn.MouseButton1Up) end)
+	else
+		-- Cálculo corregido de posición absoluta en pantalla (Compatible con PC)
+		local pos = targetBtn.AbsolutePosition
+		local size = targetBtn.AbsoluteSize
+		local inset = game:GetService("GuiService"):GetGuiInset()
+		
+		local centerX = pos.X + (size.X / 2)
+		local centerY = pos.Y + (size.Y / 2) + inset.Y
+
+		VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, true, game, 1)
+		task.wait(0.04)
+		VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, false, game, 1)
+	end
+end
+
+local function clickShopItemExact(exactKeyword)
+	for _, gui in ipairs(PlayerGui:GetDescendants()) do
+		if not gui:IsDescendantOf(Screengui) then
+			local matched = false
+
+			if gui:IsA("TextLabel") or gui:IsA("TextButton") then
+				local txt = gui.Text:lower()
+				if exactKeyword == "water" and txt == "water" then
+					matched = true
+				elseif exactKeyword == "gelatin" and txt == "gelatin" then
+					matched = true
+				elseif exactKeyword == "sugar" and (txt:find("sugar block bag") or txt == "sugar block bag") then
+					matched = true
+				end
+			end
+
+			if matched then
+				local targetBtn = (gui:IsA("TextButton") or gui:IsA("ImageButton")) and gui or gui.Parent
+				clickSingleTarget(targetBtn)
+				return true
+			end
+		end
+	end
+	return false
+end
+
+BuyButton.MouseButton1Click:Connect(function()
+	autoBuyActive = not autoBuyActive
+	BuyButton.BackgroundColor3 = autoBuyActive and Color3.fromRGB(40, 180, 80) or Color3.fromRGB(180, 40, 40)
+	BuyButton.Text = autoBuyActive and "AUTO BUY: ON" or "AUTO BUY: OFF"
+end)
+
+task.spawn(function()
+	while true do
+		if autoBuyActive then
+			local targetAmount = tonumber(QuantityBox.Text) or 1
+			targetAmount = math.clamp(targetAmount, 1, 100)
+			
+			local ingredients = {"water", "gelatin", "sugar"}
+			
+			for _, ingredientKey in ipairs(ingredients) do
+				if not autoBuyActive then break end
+				
+				for i = 1, targetAmount do
+					if not autoBuyActive then break end
+					
+					local success = clickShopItemExact(ingredientKey)
+					if success then
+						task.wait(0.45)
+					else
+						task.wait(0.2)
+					end
+				end
+				
+				task.wait(0.5)
+			end
+			
+			autoBuyActive = false
+			BuyButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+			BuyButton.Text = "AUTO BUY: OFF"
+		end
+		task.wait(0.5)
+	end
+end)
